@@ -6,4 +6,4 @@ Description: An awesome MobileSubstrate tweak!
 Maintainer: Rachel
 Author: Rachel
 Section: Tweaks
-Depends: mobilesubstrate (>= 0.9.5000), com.rpetrich.rocketbootstrap (>= 1.0.2) | firmware (<< 7.0)
+Depends: mobilesubstrate (>= 0.9.5000), com.rpetrich.rocketbootstrap (>= 1.0.2), firmware (>= 14.0)
