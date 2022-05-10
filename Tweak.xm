@@ -71,6 +71,31 @@
 @end
 
 
+static inline char itoh(int i) {
+    if (i > 9) return 'A' + (i - 10);
+    return '0' + i;
+}
+
+static NSString * NSDataToHex(NSData *data) {
+    NSUInteger i, len;
+    unsigned char *buf, *bytes;
+    
+    len = data.length;
+    bytes = (unsigned char*)data.bytes;
+    buf = (unsigned char *)malloc(len*2);
+    
+    for (i=0; i<len; i++) {
+        buf[i*2] = itoh((bytes[i] >> 4) & 0xF);
+        buf[i*2+1] = itoh(bytes[i] & 0xF);
+    }
+    
+    return [[NSString alloc] initWithBytesNoCopy:buf
+                                          length:len*2
+                                        encoding:NSASCIIStringEncoding
+                                    freeWhenDone:YES];
+}
+
+
 static CFDataRef Callback(
     CFMessagePortRef port,
     SInt32 messageID,
@@ -178,7 +203,12 @@ static CFDataRef Callback(
     returnDict[@"headers"] = headerFields;
 
     kbsync = ((CFDataRef (*)(long, int))kbsync_entry)(accountID, 0xB);
-    NSString *kbsyncString = [(__bridge NSData *)kbsync base64EncodedStringWithOptions:kNilOptions];
+    NSString *kbsyncString = nil;
+    if ([args[@"kbsyncType"] isEqualToString:@"hex"]) {
+        kbsyncString = NSDataToHex(CFBridgingRelease(kbsync));
+    } else {
+        kbsyncString = [CFBridgingRelease(kbsync) base64EncodedStringWithOptions:kNilOptions];
+    }
     NSLog(@"kbsync_result_callback %@", kbsyncString);
     returnDict[@"kbsync"] = kbsyncString;
 

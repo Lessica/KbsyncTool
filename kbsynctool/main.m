@@ -8,7 +8,7 @@
 #import "GCDWebServerErrorResponse.h"
 
 
-static id RocketGetJSONResponse(NSString *urlString)
+static id RocketGetJSONResponse(NSString *urlString, NSString *kbsyncType)
 {
     CFMessagePortRef remotePort = rocketbootstrap_cfmessageportcreateremote(NULL, CFSTR("com.darwindev.kbsync.port"));
     if (!remotePort) {
@@ -16,7 +16,8 @@ static id RocketGetJSONResponse(NSString *urlString)
 		return nil;
 	}
 
-    CFDataRef data = (CFDataRef)CFBridgingRetain([NSPropertyListSerialization dataWithPropertyList:@{@"url": urlString} format:NSPropertyListBinaryFormat_v1_0 options:kNilOptions error:nil]);
+    CFDataRef data = (CFDataRef)CFBridgingRetain([NSPropertyListSerialization dataWithPropertyList:@{
+        @"url": urlString, @"kbsyncType": kbsyncType} format:NSPropertyListBinaryFormat_v1_0 options:kNilOptions error:nil]);
     CFDataRef returnData = NULL;
     SInt32 status =
         CFMessagePortSendRequest(
@@ -58,7 +59,7 @@ int main(int argc, char *argv[], char *envp[]) {
         // one-time execute
 
         NSString *urlString = [NSString stringWithUTF8String:argv[1]];
-        id returnObj = RocketGetJSONResponse(urlString);
+        id returnObj = RocketGetJSONResponse(urlString, @"base64");
         NSData *jsonData = [NSJSONSerialization dataWithJSONObject:returnObj options:(NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys) error:nil];
         NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
 
@@ -86,7 +87,7 @@ int main(int argc, char *argv[], char *envp[]) {
                 return;
             }
 
-            id returnObj = RocketGetJSONResponse(urlString);
+            id returnObj = RocketGetJSONResponse(urlString, @"hex");
             if (!returnObj) {
                 completionBlock([GCDWebServerErrorResponse responseWithServerError:kGCDWebServerHTTPStatusCode_InternalServerError message:@"invalid url"]);
                 return;
