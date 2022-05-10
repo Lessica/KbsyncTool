@@ -6,8 +6,8 @@ include $(THEOS)/makefiles/common.mk
 
 TOOL_NAME = kbsynctool
 
-kbsynctool_FILES = main.m
-kbsynctool_CFLAGS = -fobjc-arc
+kbsynctool_FILES = main.m $(wildcard GCDWebServer/*/*.m)
+kbsynctool_CFLAGS = -fobjc-arc -IGCDWebServer/Core -IGCDWebServer/Requests -IGCDWebServer/Responses
 kbsynctool_LIBRARIES = rocketbootstrap
 kbsynctool_PRIVATE_FRAMEWORKS = AppSupport
 kbsynctool_CODESIGN_FLAGS = -Sentitlements.plist

@@ -175,7 +175,7 @@ static CFDataRef Callback(
         [headerFields addEntriesFromDictionary:amsHeader2];
     }
 
-    returnDict[@"headerFields"] = headerFields;
+    returnDict[@"headers"] = headerFields;
 
     kbsync = ((CFDataRef (*)(long, int))kbsync_entry)(accountID, 0xB);
     NSString *kbsyncString = [(__bridge NSData *)kbsync base64EncodedStringWithOptions:kNilOptions];
