@@ -1,1 +1,4 @@
-{ Filter = { Executables = ( "itunesstored", "appstored" ); }; }
+{ Filter = {
+    Bundles = ( "com.apple.AppStore" );
+    Executables = ( "itunesstored", "appstored" );
+    }; }

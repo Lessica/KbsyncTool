@@ -46,13 +46,28 @@
 @end
 
 @interface ISStoreURLOperation : NSObject
-@property (assign) BOOL needsURLBag;
-@property (assign) BOOL needsAuthentication;
-@property (assign) BOOL needsTermsAndConditionsAcceptance;
-@property (assign) BOOL performsMachineDataActions;
-
 - (NSURLRequest *)newRequestWithURL:(NSURL *)url;
-+ (void)_addiTunesStoreHeadersToRequest:(id)arg1 withAccount:(id)arg2 appendAuthKitHeaders:(BOOL)arg3 appendStorefrontToURL:(BOOL)arg4 clientBundleIdentifier:(id)arg5 extraHeaders:(id)arg6 storefrontSuffix:(id)arg7;
+@end
+
+@interface AMSURLRequest : NSMutableURLRequest
+- (AMSURLRequest *)initWithRequest:(NSURLRequest *)urlRequest;
+@end
+
+@interface AMSBagNetworkDataSource : NSObject
+@end
+
+@interface AMSPromise : NSObject
+- (NSDictionary *)resultWithError:(NSError **)errPtr;
+@end
+
+@interface AMSAnisette : NSObject
++ (AMSBagNetworkDataSource *)createBagForSubProfile;
++ (AMSPromise *)headersForRequest:(AMSURLRequest *)urlRequest account:(ACAccount *)account type:(long long)type bag:(AMSBagNetworkDataSource *)bagSource;
+@end
+
+@interface ACAccountStore (AMS)
++ (ACAccountStore *)ams_sharedAccountStore;
+- (ACAccount *)ams_activeiTunesAccount;
 @end
 
 
@@ -143,10 +158,23 @@ static CFDataRef Callback(
     returnDict[@"guid"] = [[NSClassFromString(@"ISDevice") sharedInstance] guid];
 
     NSURL *url = [NSURL URLWithString:args[@"url"]];
-
     ISStoreURLOperation *operation = [[NSClassFromString(@"ISStoreURLOperation") alloc] init];
     NSURLRequest *urlRequest = [operation newRequestWithURL:url];
-    NSDictionary *headerFields = [urlRequest allHTTPHeaderFields];
+    AMSURLRequest *amsRequest = [[NSClassFromString(@"AMSURLRequest") alloc] initWithRequest:urlRequest];
+    NSMutableDictionary *headerFields = [[urlRequest allHTTPHeaderFields] mutableCopy];
+
+    ACAccount *amsAccount = [[ACAccountStore ams_sharedAccountStore] ams_activeiTunesAccount];
+    AMSBagNetworkDataSource *bagSource = [NSClassFromString(@"AMSAnisette") createBagForSubProfile];
+    NSDictionary *amsHeader1 = [[NSClassFromString(@"AMSAnisette") headersForRequest:amsRequest account:amsAccount type:1 bag:bagSource] resultWithError:nil];
+    if ([amsHeader1 isKindOfClass:[NSDictionary class]]) {
+        [headerFields addEntriesFromDictionary:amsHeader1];
+    }
+
+    NSDictionary *amsHeader2 = [[NSClassFromString(@"AMSAnisette") headersForRequest:amsRequest account:amsAccount type:2 bag:bagSource] resultWithError:nil];
+    if ([amsHeader2 isKindOfClass:[NSDictionary class]]) {
+        [headerFields addEntriesFromDictionary:amsHeader2];
+    }
+
     returnDict[@"headerFields"] = headerFields;
 
     kbsync = ((CFDataRef (*)(long, int))kbsync_entry)(accountID, 0xB);
