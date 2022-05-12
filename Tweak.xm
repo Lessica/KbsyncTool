@@ -220,22 +220,6 @@ static CFDataRef Callback(
     return nil;
 }
 
-%group AppleMediaServices
-
-/* @class AMSURLSession */
-// - (int)_prepareRequest:(int)arg2 properties:(int)arg3 error:(int)arg4
-
-%hook AMSURLSession
-- (id)_prepareRequest:(NSURLRequest *)urlRequest properties:(id)arg3 error:(id*)arg4 {
-    NSMutableDictionary *headerFields = [[urlRequest allHTTPHeaderFields] mutableCopy];
-    [headerFields removeObjectForKey:@"Cookie"];
-    NSLog(@"AMSURLSession %@", headerFields); %log;
-    return %orig(urlRequest, arg3, arg4);
-}
-%end
-
-%end
-
 %ctor {
     
     if ([[[NSProcessInfo processInfo] processName] isEqualToString:@"itunesstored"]) {
@@ -264,8 +248,5 @@ static CFDataRef Callback(
         );
 
         rocketbootstrap_cfmessageportexposelocal(localPort);
-    } else {
-
-        %init(AppleMediaServices);
     }
 }

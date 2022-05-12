@@ -1,5 +1,5 @@
 TARGET := iphone:clang:latest:13.0
-INSTALL_TARGET_PROCESSES = itunesstored appstored AppStore
+INSTALL_TARGET_PROCESSES = itunesstored
 export THEOS_DEVICE_IP = 127.0.0.1
 export THEOS_DEVICE_PORT = 58422
 
