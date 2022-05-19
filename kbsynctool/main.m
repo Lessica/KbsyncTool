@@ -13,7 +13,7 @@ static id RocketGetJSONResponse(NSString *urlString, NSString *kbsyncType)
     CFMessagePortRef remotePort = rocketbootstrap_cfmessageportcreateremote(NULL, CFSTR("com.darwindev.kbsync.port"));
     if (!remotePort) {
 		fprintf(stderr, "no remote port found\n");
-		return nil;
+		return [NSDictionary dictionary];
 	}
 
     CFDataRef data = (CFDataRef)CFBridgingRetain([NSPropertyListSerialization dataWithPropertyList:@{
@@ -37,7 +37,7 @@ static id RocketGetJSONResponse(NSString *urlString, NSString *kbsyncType)
         
         CFMessagePortInvalidate(remotePort);
         CFRelease(remotePort);
-		return nil;
+		return [NSDictionary dictionary];
     }
 
     CFMessagePortInvalidate(remotePort);
