@@ -14,3 +14,11 @@ Test1:~ root# kbsynctool -s 9000
 ```
 
 Then use [ipatool-py](https://github.com/NyaMisty/ipatool-py) to send requests.
+
+
+## Troubleshoot
+
+1. **Disable** “Use Face ID for iTunes & App Store” in “Settings, Face ID & Passcode”.
+2. Download one or two items in App Store before fetch credentials.
+3. Select **Save Password for Free Items** if asked to do so.
+4. Select **Require After 15 Minutes** if asked to do so.

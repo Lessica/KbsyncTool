@@ -9,10 +9,10 @@
 
 
 @interface MicroPaymentQueueRequest : NSObject
-@property(retain) NSNumber* userIdentifier;
-@property(retain) NSNumber* rangeStartIdentifier;
-@property(retain) NSNumber* rangeEndIdentifier;
-@property(assign) BOOL needsAuthentication;
+@property (retain) NSNumber *userIdentifier;
+@property (retain) NSNumber *rangeStartIdentifier;
+@property (retain) NSNumber *rangeEndIdentifier;
+@property (assign) BOOL needsAuthentication;
 - (id)_ntsQueryParameters:(id *)parameters;
 - (id)_ntsClientApplication:(id *)application;
 - (id)description;
@@ -199,6 +199,8 @@ static CFDataRef Callback(
     if ([amsHeader2 isKindOfClass:[NSDictionary class]]) {
         [headerFields addEntriesFromDictionary:amsHeader2];
     }
+
+    [headerFields removeObjectForKey:@"Authorization"];
 
     returnDict[@"headers"] = headerFields;
 
