@@ -8,7 +8,7 @@
 #import "GCDWebServerErrorResponse.h"
 
 
-static id RocketGetJSONResponse(NSString *urlString, NSString *kbsyncType)
+static id RocketGetJSONResponse(NSString *urlString, NSString *syncType)
 {
     CFMessagePortRef remotePort = rocketbootstrap_cfmessageportcreateremote(NULL, CFSTR("com.darwindev.kbsync.port"));
     if (!remotePort) {
@@ -17,7 +17,7 @@ static id RocketGetJSONResponse(NSString *urlString, NSString *kbsyncType)
 	}
 
     CFDataRef data = (CFDataRef)CFBridgingRetain([NSPropertyListSerialization dataWithPropertyList:@{
-        @"url": urlString, @"kbsyncType": kbsyncType} format:NSPropertyListBinaryFormat_v1_0 options:kNilOptions error:nil]);
+        @"url": urlString, @"kbsyncType": syncType, @"sbsyncType": syncType} format:NSPropertyListBinaryFormat_v1_0 options:kNilOptions error:nil]);
     CFDataRef returnData = NULL;
     SInt32 status =
         CFMessagePortSendRequest(

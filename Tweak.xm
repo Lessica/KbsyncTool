@@ -70,6 +70,14 @@
 - (ACAccount *)ams_activeiTunesAccount;
 @end
 
+@interface SSVFairPlaySubscriptionController : NSObject
+- (BOOL)generateSubscriptionBagRequestWithAccountUniqueIdentifier:(unsigned long long)arg1 transactionType:(unsigned int)arg2 machineIDData:(NSData *)arg3 returningSubscriptionBagData:(NSData **)arg4 error:(NSError **)arg5;
+@end
+
+@interface PurchaseOperation : NSObject
+- (SSVFairPlaySubscriptionController *)_fairPlaySubscriptionController;
+@end
+
 
 static inline char itoh(int i) {
     if (i > 9) return 'A' + (i - 10);
@@ -105,53 +113,132 @@ static CFDataRef Callback(
     // ...
 
     NSDictionary *args = [NSPropertyListSerialization propertyListWithData:(__bridge NSData *)data options:kNilOptions format:nil error:nil];
-    NSLog(@"Start to calc kbsync, base offset: 0x%lx.", _dyld_get_image_vmaddr_slide(0));
 
-    Class KeybagSyncOperation = NSClassFromString(@"KeybagSyncOperation");
-    NSLog(@"Get KeybagSyncOperation class: %p.", KeybagSyncOperation);
-
-    Method method = class_getInstanceMethod(KeybagSyncOperation, NSSelectorFromString(@"run"));
-    NSLog(@"Get run method: %p.", method);
-
-    IMP imp = method_getImplementation(method);
-    NSLog(@"Get run implementation: %p.", imp);
-
-#if __arm64e__
-    const uint32_t *kbsync_caller = (uint32_t *)make_sym_readable((void *)imp);
-#else
-    const uint32_t *kbsync_caller = (uint32_t *)imp;
-#endif
-    const uint8_t mov_w1_0xb[] = {
-        0x61, 0x01, 0x80, 0x52,
-    };
-    CFDataRef kbsync = NULL;
-    while (*kbsync_caller++ != *(uint32_t *)&mov_w1_0xb[0]);
-    NSLog(@"Parsed kbsync caller: %p.", kbsync_caller);
-
-    // decode the bl instruction to get the real kbsyn callee
-    // 31 30 29 28 27 26 25 ... 0
-    //  1  0  0  1  0  1  - imm -
-    int blopcode = *(int *)kbsync_caller;
-    int blmask = 0xFC000000;
-    if (blopcode & (1 << 26)) {
-        // sign extend
-        blopcode |= blmask;
-    } else {
-        blopcode &= ~blmask;
-    }
-
-    long kbsync_entry = (long)kbsync_caller + (blopcode << 2);
-    NSLog(@"Decoded kbsync entry: 0x%lx.", kbsync_entry);
-
-    // call the kbsync calc entry
-#if __arm64e__
-    kbsync_entry = (long)make_sym_callable((void *)kbsync_entry);
-#endif
-    
-    NSMutableDictionary *returnDict = [NSMutableDictionary dictionary];
     SSAccount *account = [[SSAccountStore defaultStore] activeAccount];
     unsigned long long accountID = [[account uniqueIdentifier] unsignedLongLongValue];
     NSLog(@"Got account %@, id %llu", account, accountID);
+
+    NSLog(@"Start to calc kbsync and sbsync, base offset: 0x%lx.", _dyld_get_image_vmaddr_slide(0));
+    CFDataRef kbsync = NULL;
+    {
+        Class KeybagSyncOperationCls = NSClassFromString(@"KeybagSyncOperation");
+        NSLog(@"Got KeybagSyncOperation class: %p.", KeybagSyncOperationCls);
+
+        Method RunMethod = class_getInstanceMethod(KeybagSyncOperationCls, NSSelectorFromString(@"run"));
+        NSLog(@"Got -run method: %p.", RunMethod);
+
+        IMP RunIMP = method_getImplementation(RunMethod);
+        NSLog(@"Got -run implementation: %p.", RunIMP);
+
+#if __arm64e__
+        const uint32_t *kbsync_caller = (uint32_t *)make_sym_readable((void *)RunIMP);
+#else
+        const uint32_t *kbsync_caller = (uint32_t *)RunIMP;
+#endif
+        const uint8_t mov_w1_0xb[] = {
+            0x61, 0x01, 0x80, 0x52,
+        };
+        while (*kbsync_caller++ != *(uint32_t *)&mov_w1_0xb[0]);
+        NSLog(@"Parsed kbsync caller: %p.", kbsync_caller);
+
+        // decode the bl instruction to get the real kbsync callee
+        // 31 30 29 28 27 26 25 ... 0
+        //  1  0  0  1  0  1  - imm -
+        int blopcode, blmask;
+        blopcode = *(int *)kbsync_caller;
+        blmask = 0xFC000000;
+        if (blopcode & (1 << 26)) {
+            // sign extend
+            blopcode |= blmask;
+        } else {
+            blopcode &= ~blmask;
+        }
+
+        long kbsync_entry = (long)kbsync_caller + (blopcode << 2);
+        NSLog(@"Decoded kbsync entry: 0x%lx.", kbsync_entry);
+
+#if __arm64e__
+        kbsync_entry = (long)make_sym_callable((void *)kbsync_entry);
+#endif
+
+        // call the kbsync calc entry
+        kbsync = ((CFDataRef (*)(long, int))kbsync_entry)(accountID, 0xB);
+        NSLog(@"Got kbsync: %@", (__bridge NSData *)kbsync);
+    }
+
+    NSData *sbsync = NULL;
+    do {
+        Class PurchaseOperationCls = NSClassFromString(@"PurchaseOperation");
+        NSLog(@"Got PurchaseOperation class: %p.", PurchaseOperationCls);
+
+        Method FairMethod = class_getInstanceMethod(PurchaseOperationCls, NSSelectorFromString(@"_addFairPlayToRequestProperties:withAccountIdentifier:"));
+        NSLog(@"Got -_addFairPlayToRequestProperties:withAccountIdentifier: method: %p.", FairMethod);
+
+        IMP FairIMP = method_getImplementation(FairMethod);
+        NSLog(@"Got -_addFairPlayToRequestProperties:withAccountIdentifier: implementation: %p.", FairIMP);
+
+#if __arm64e__
+        const uint32_t *machine_id_caller = (uint32_t *)make_sym_readable((void *)FairIMP);
+#else
+        const uint32_t *machine_id_caller = (uint32_t *)FairIMP;
+#endif
+        const uint8_t movn_x0_0x0[] = {
+            0x00, 0x00, 0x80, 0x92,
+        };
+        CFDataRef machine_id = NULL;
+        while (*machine_id_caller++ != *(uint32_t *)&movn_x0_0x0[0]);
+        NSLog(@"Parsed machine_id caller: %p.", machine_id_caller);
+
+        // decode the bl instruction to get the real kbsyn callee
+        // 31 30 29 28 27 26 25 ... 0
+        //  1  0  0  1  0  1  - imm -
+        int blopcode, blmask;
+        blopcode = *(int *)machine_id_caller;
+        blmask = 0xFC000000;
+        if (blopcode & (1 << 26)) {
+            // sign extend
+            blopcode |= blmask;
+            blopcode ^= blmask;
+        } else {
+            blopcode &= ~blmask;
+        }
+
+        long machine_id_entry = (long)machine_id_caller + (blopcode << 2);
+        NSLog(@"Decoded machine_id entry: 0x%lx.", machine_id_entry);
+
+#if __arm64e__
+        machine_id_entry = (long)make_sym_callable((void *)machine_id_entry);
+#endif
+
+        // call the machine_id calc entry
+        char *md_str = NULL;
+        size_t md_len = 0;
+        char *amd_str = NULL;
+        size_t amd_len = 0;
+        int md_ret = ((int (*)(long, char **, size_t *, char **, size_t *))machine_id_entry)(0xffffffffffffffff, &md_str, &md_len, &amd_str, &amd_len);
+        if (md_ret) {
+            break;
+        }
+
+        NSData *mdData = [[NSData alloc] initWithBytesNoCopy:md_str length:md_len freeWhenDone:NO];
+        NSLog(@"Got Machine ID data: %@", [mdData base64EncodedStringWithOptions:kNilOptions]);
+
+        NSData *amdData = [[NSData alloc] initWithBytesNoCopy:amd_str length:amd_len freeWhenDone:NO];
+        NSLog(@"Got Apple Machine ID data: %@", [amdData base64EncodedStringWithOptions:kNilOptions]);
+        
+        NSError *sbsyncErr = nil;
+        PurchaseOperation *purchaseOp = [[NSClassFromString(@"PurchaseOperation") alloc] init];
+        SSVFairPlaySubscriptionController *fairPlayCtrl = [purchaseOp _fairPlaySubscriptionController];
+        BOOL sbsyncSucceed = [fairPlayCtrl generateSubscriptionBagRequestWithAccountUniqueIdentifier:accountID transactionType:0x138 /* PurchaseOperation */ machineIDData:mdData returningSubscriptionBagData:&sbsync error:&sbsyncErr];
+        if (!sbsyncSucceed) {
+            NSLog(@"Failed to generate subscription bag request: %@", sbsyncErr);
+            break;
+        }
+
+        NSLog(@"Got sbsync: %@", sbsync);
+    } while (0);
+    
+    NSMutableDictionary *returnDict = [NSMutableDictionary dictionary];
     dispatch_sync(account.backingAccountAccessQueue, ^{
         returnDict[@"backingIdentifier"] = [[account backingAccount] identifier];
     });
@@ -204,7 +291,6 @@ static CFDataRef Callback(
 
     returnDict[@"headers"] = headerFields;
 
-    kbsync = ((CFDataRef (*)(long, int))kbsync_entry)(accountID, 0xB);
     NSString *kbsyncString = nil;
     if ([args[@"kbsyncType"] isEqualToString:@"hex"]) {
         kbsyncString = NSDataToHex(CFBridgingRelease(kbsync));
@@ -214,7 +300,16 @@ static CFDataRef Callback(
     NSLog(@"kbsync_result_callback %@", kbsyncString);
     returnDict[@"kbsync"] = kbsyncString;
 
-    if (kbsync) {
+    NSString *sbsyncString = nil;
+    if ([args[@"sbsyncType"] isEqualToString:@"hex"]) {
+        sbsyncString = NSDataToHex(sbsync);
+    } else {
+        sbsyncString = [sbsync base64EncodedStringWithOptions:kNilOptions];
+    }
+    NSLog(@"sbsync_result_callback %@", sbsyncString);
+    returnDict[@"sbsync"] = sbsyncString;
+
+    if (kbsync || sbsync) {
         return (CFDataRef)CFBridgingRetain([NSPropertyListSerialization dataWithPropertyList:returnDict format:NSPropertyListBinaryFormat_v1_0 options:kNilOptions error:nil]);
     }
 
