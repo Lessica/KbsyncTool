@@ -6,6 +6,8 @@ itunesstored_*
 iTunesStore.*
 *.hop
 send_payload.py
+.cache/
+compile_commands.json
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,xcode,objective-c,cocoapods
